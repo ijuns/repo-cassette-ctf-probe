@@ -83,4 +83,30 @@ module.exports = async function scan({context}) {
   const id = String(final.data.artifact_id || final.data.artifactId || '');
   console.log(`Finalize mixed-name: HTTP ${final.status}; ok=${Boolean(final.data.ok)}; id=${id}`);
   if (final.status === 200 && final.data.ok && /^\d+$/.test(id)) await inspect(id, 'Mixed REST');
+
+  for (const [label, order, finalizeBetween] of [
+    ['reverse', [[7, 'application/json'], [6, weird]], false],
+    ['after-finalize', [[6, weird], [7, 'application/json']], true],
+  ]) {
+    const collisionName = `collision-${label}-${Date.now()}`;
+    const a = await twirp('CreateArtifact', {...ids, name: collisionName, version: order[0][0], mime_type: order[0][1]});
+    console.log(`${label} Create first: HTTP ${a.status}; ok=${Boolean(a.data.ok)}`);
+    if (a.status !== 200 || !a.data.ok) continue;
+    const aUrl = a.data.signed_upload_url || a.data.signedUploadUrl;
+    console.log(`${label} PUT first: HTTP ${await put(aUrl)}`);
+    if (finalizeBetween) {
+      const f = await twirp('FinalizeArtifact', {...ids, name: collisionName, size: String(payload.length)});
+      const firstId = String(f.data.artifact_id || f.data.artifactId || '');
+      console.log(`${label} Finalize first: HTTP ${f.status}; ok=${Boolean(f.data.ok)}; id=${firstId}`);
+      if (f.status === 200 && f.data.ok && /^\d+$/.test(firstId)) await inspect(firstId, `${label} first REST`);
+    }
+    const b = await twirp('CreateArtifact', {...ids, name: collisionName, version: order[1][0], mime_type: order[1][1]});
+    const bUrl = b.data.signed_upload_url || b.data.signedUploadUrl;
+    console.log(`${label} Create second: HTTP ${b.status}; ok=${Boolean(b.data.ok)}; same-url=${Boolean(aUrl && bUrl && aUrl === bUrl)}; message=${JSON.stringify(String(b.data.msg || '').slice(0, 130))}`);
+    if (b.status === 200 && b.data.ok) console.log(`${label} PUT second: HTTP ${await put(bUrl)}`);
+    const f = await twirp('FinalizeArtifact', {...ids, name: collisionName, size: String(payload.length)});
+    const resultId = String(f.data.artifact_id || f.data.artifactId || '');
+    console.log(`${label} Finalize last: HTTP ${f.status}; ok=${Boolean(f.data.ok)}; id=${resultId}; message=${JSON.stringify(String(f.data.msg || '').slice(0, 130))}`);
+    if (f.status === 200 && f.data.ok && /^\d+$/.test(resultId)) await inspect(resultId, `${label} last REST`);
+  }
 };

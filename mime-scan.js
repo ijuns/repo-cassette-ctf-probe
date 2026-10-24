@@ -8,7 +8,14 @@ module.exports = async function scan({context}) {
   const base = new URL(resultsUrl).origin;
   const ids = {workflow_run_backend_id: workflowRunBackendId, workflow_job_run_backend_id: workflowJobRunBackendId};
   const service = 'github.actions.results.api.v1.ArtifactService';
-  const candidates = [['normal-json', 7, 'application/json']];
+  const candidates = [
+    ['v0-nel', 0, 'application/json\u0085'],
+    ['v1-nel', 1, 'application/json\u0085'],
+    ['v2-nel', 2, 'application/json\u0085'],
+    ['v3-nel', 3, 'application/json\u0085'],
+    ['v7-empty', 7, ''],
+    ['v7-normal', 7, 'application/json'],
+  ];
 
   async function twirp(method, body) {
     const response = await fetch(`${base}/twirp/${service}/${method}`, {

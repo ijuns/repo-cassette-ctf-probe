@@ -9,14 +9,14 @@ module.exports = async function scan({context}) {
   const ids = {workflow_run_backend_id: workflowRunBackendId, workflow_job_run_backend_id: workflowJobRunBackendId};
   const service = 'github.actions.results.api.v1.ArtifactService';
   const candidates = [
-    ['nel-param', 7, 'application/json\u0085;charset=utf-8'],
-    ['nel-space-param', 7, 'application/json\u0085 ;charset=utf-8'],
-    ['space-nel-param', 7, 'application/json \u0085;charset=utf-8'],
-    ['nel-quoted-param', 7, 'application/json\u0085; charset="utf-8"'],
-    ['nel-comma', 7, 'application/json\u0085,application/json'],
-    ['ascii-tab-nel-param', 7, 'application/json\t\u0085;charset=utf-8'],
-    ['nel-tab-param', 7, 'application/json\u0085\t;charset=utf-8'],
-    ['nel-param-before', 7, 'application/json\u0085;x=1'],
+    ['file-separator', 7, 'application/json\u001c'],
+    ['group-separator', 7, 'application/json\u001d'],
+    ['record-separator', 7, 'application/json\u001e'],
+    ['unit-separator', 7, 'application/json\u001f'],
+    ['fs-param', 7, 'application/json\u001c;charset=utf-8'],
+    ['gs-param', 7, 'application/json\u001d;charset=utf-8'],
+    ['rs-param', 7, 'application/json\u001e;charset=utf-8'],
+    ['us-param', 7, 'application/json\u001f;charset=utf-8'],
   ];
 
   async function twirp(method, body) {

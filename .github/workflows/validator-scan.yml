@@ -9,6 +9,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/github-script@v8
+        env:
+          GH_TOKEN: ${{ github.token }}
         with:
           script: |
             const path = require('path');

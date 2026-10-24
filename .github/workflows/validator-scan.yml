@@ -1,0 +1,16 @@
+name: Repo Cassette validator scan
+on:
+  workflow_dispatch:
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/github-script@v8
+        with:
+          script: |
+            const path = require('path');
+            const scan = require(path.join(process.env.GITHUB_WORKSPACE, 'validator-scan.js'));
+            await scan();

@@ -8,18 +8,7 @@ module.exports = async function scan({context}) {
   const base = new URL(resultsUrl).origin;
   const ids = {workflow_run_backend_id: workflowRunBackendId, workflow_job_run_backend_id: workflowJobRunBackendId};
   const service = 'github.actions.results.api.v1.ArtifactService';
-  const candidates = [
-    ['trailing-nel', 7, 'application/json\u0085'],
-    ['leading-nel', 7, '\u0085application/json'],
-    ['percent-85', 7, 'application/json%85'],
-    ['percent-c285', 7, 'application/json%C2%85'],
-    ['percent-1c', 7, 'application/json%1C'],
-    ['v4-nel', 4, 'application/json\u0085'],
-    ['v5-nel', 5, 'application/json\u0085'],
-    ['v6-nel', 6, 'application/json\u0085'],
-    ['v8-nel', 8, 'application/json\u0085'],
-    ['normal-json', 7, 'application/json'],
-  ];
+  const candidates = [['normal-json', 7, 'application/json']];
 
   async function twirp(method, body) {
     const response = await fetch(`${base}/twirp/${service}/${method}`, {
@@ -54,6 +43,23 @@ module.exports = async function scan({context}) {
       continue;
     }
     const id = String(finalized.artifact_id || finalized.artifactId);
+    if (label === 'normal-json') {
+      try {
+        const changed = await fetch(signedUploadUrl, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/octet-stream',
+            'x-ms-version': '2025-01-05',
+            'x-ms-blob-type': 'BlockBlob',
+            'x-ms-blob-content-type': 'application/json\u0085',
+          },
+          body,
+        });
+        console.log(`azure-nel-property: HTTP ${changed.status}; code=${changed.headers.get('x-ms-error-code')}`);
+      } catch (error) {
+        console.log(`azure-nel-property: client error ${error.message}`);
+      }
+    }
     const url = `https://api.github.com/repos/${context.repo.owner}/${context.repo.repo}/actions/artifacts/${id}/zip`;
     const first = await fetch(url, {redirect: 'manual', headers: {'Authorization': `Bearer ${process.env.GH_TOKEN}`, 'Accept': 'application/vnd.github.v3+json'}});
     const location = first.headers.get('location');

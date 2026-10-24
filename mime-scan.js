@@ -9,12 +9,14 @@ module.exports = async function scan({context}) {
   const ids = {workflow_run_backend_id: workflowRunBackendId, workflow_job_run_backend_id: workflowJobRunBackendId};
   const service = 'github.actions.results.api.v1.ArtifactService';
   const candidates = [
-    ['v0-nel', 0, 'application/json\u0085'],
-    ['v1-nel', 1, 'application/json\u0085'],
-    ['v2-nel', 2, 'application/json\u0085'],
-    ['v3-nel', 3, 'application/json\u0085'],
-    ['v7-empty', 7, ''],
-    ['v7-normal', 7, 'application/json'],
+    ['nel-param', 7, 'application/json\u0085;charset=utf-8'],
+    ['nel-space-param', 7, 'application/json\u0085 ;charset=utf-8'],
+    ['space-nel-param', 7, 'application/json \u0085;charset=utf-8'],
+    ['nel-quoted-param', 7, 'application/json\u0085; charset="utf-8"'],
+    ['nel-comma', 7, 'application/json\u0085,application/json'],
+    ['ascii-tab-nel-param', 7, 'application/json\t\u0085;charset=utf-8'],
+    ['nel-tab-param', 7, 'application/json\u0085\t;charset=utf-8'],
+    ['nel-param-before', 7, 'application/json\u0085;x=1'],
   ];
 
   async function twirp(method, body) {

@@ -1,1 +1,9 @@
-{"private":true,"name":"repo-cassette-ctf-probe","version":"1.0.0"}
+{
+  "name": "repo-cassette-private-builder",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@actions/artifact": "6.3.1",
+    "@azure/storage-blob": "12.31.0"
+  }
+}

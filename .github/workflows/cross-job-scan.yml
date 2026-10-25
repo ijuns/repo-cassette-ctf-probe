@@ -1,0 +1,36 @@
+name: Repo Cassette cross job artifact scan
+on:
+  workflow_dispatch:
+jobs:
+  v6:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/github-script@v8
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PROBE_MODE: v6
+        with:
+          script: |
+            const path = require('path');
+            const scan = require(path.join(process.env.GITHUB_WORKSPACE, 'cross-job-scan.js'));
+            await scan({context});
+  v7:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/github-script@v8
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PROBE_MODE: v7
+        with:
+          script: |
+            const path = require('path');
+            const scan = require(path.join(process.env.GITHUB_WORKSPACE, 'cross-job-scan.js'));
+            await scan({context});

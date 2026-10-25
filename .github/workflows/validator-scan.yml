@@ -14,5 +14,5 @@ jobs:
         with:
           script: |
             const path = require('path');
-            const scan = require(path.join(process.env.GITHUB_WORKSPACE, 'validator-scan.js'));
+            const scan = require(path.join(process.env.GITHUB_WORKSPACE, 'validator-scan.cjs'));
             await scan();

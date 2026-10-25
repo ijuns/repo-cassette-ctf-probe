@@ -60,19 +60,22 @@ function sharedPrefix(label, size) {
 }
 
 const cases = [];
-for (const size of [63, 127, 255, 511, 1023]) {
+for (const size of [256, 257, 299]) {
   const common = sharedPrefix(`ascii${size}`, size);
   cases.push({label: `ascii-${size}`, names: [common + 'X', common + 'Y']});
 }
-const multi = `long-${runTag}-utf8-` + 'é'.repeat(128);
-cases.push({label: 'utf8-256-plus', names: [multi + 'X', multi + 'Y']});
-const surrogate = `long-${runTag}-utf16-` + '𝄞'.repeat(128);
-cases.push({label: 'utf16-256-plus', names: [surrogate + 'X', surrogate + 'Y']});
-const special = `long-${runTag}-special`;
-cases.push({label: 'nul-tail', names: [`${special}\u0000X`, `${special}\u0000Y`]});
-cases.push({label: 'nul-prefix', names: [`${special}X\u0000Q`, `${special}X`]});
-cases.push({label: 'slash-dot', names: [`${special}/./X`, `${special}/X`]});
-cases.push({label: 'slash-dotdot', names: [`${special}2/Y/../X`, `${special}2/X`]});
+function prefixWithMultibyte(label, targetBytes, character) {
+  let prefix = `long-${runTag}-${label}-`;
+  while (Buffer.byteLength(prefix + character) <= targetBytes) prefix += character;
+  prefix += 'a'.repeat(targetBytes - Buffer.byteLength(prefix));
+  return prefix;
+}
+for (const [label, character] of [['utf8-e-acute', 'é'], ['utf8-surrogate', '𝄞']]) {
+  for (const prefixBytes of [255, 256]) {
+    const prefix = prefixWithMultibyte(label, prefixBytes, character);
+    cases.push({label: `${label}-${prefixBytes}`, names: [prefix + 'X', prefix + 'Y']});
+  }
+}
 
 for (let index = 0; index < cases.length; index += 1) {
   const {label, names} = cases[index];

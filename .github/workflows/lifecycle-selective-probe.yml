@@ -1,0 +1,20 @@
+name: Repo Cassette selective lifecycle probe
+on:
+  workflow_dispatch:
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/github-script@v8
+        env:
+          GH_TOKEN: ${{ github.token }}
+        with:
+          script: |
+            const path = require('path');
+            const probe = require(path.join(process.env.GITHUB_WORKSPACE, 'lifecycle-selective-probe.cjs'));
+            await probe({context});

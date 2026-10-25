@@ -10,6 +10,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Probe migrated artifact MIME
+        uses: actions/github-script@v8
         env:
           GITHUB_TOKEN: ${{ github.token }}
-        run: node migrate-scan.mjs
+        with:
+          script: |
+            const path = require('node:path');
+            const {pathToFileURL} = require('node:url');
+            await import(pathToFileURL(path.join(process.env.GITHUB_WORKSPACE, 'migrate-scan.mjs')).href);

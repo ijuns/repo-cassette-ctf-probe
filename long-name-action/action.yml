@@ -1,0 +1,4 @@
+name: Artifact name boundary scan
+runs:
+  using: node24
+  main: index.mjs

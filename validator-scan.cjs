@@ -8,6 +8,7 @@ module.exports = async function scan() {
   const ids = {workflow_run_backend_id: runId, workflow_job_run_backend_id: jobId};
   const weird = 'application/json\u0085';
   const safe = 'application/json';
+  const soon = new Date(Date.now() + 5 * 60 * 1000).toISOString();
   const candidates = [
     ['literal-nel', JSON.stringify({...ids, name: 'vs-literal-nel', version: 7, mime_type: weird})],
     ['unicode-escape', JSON.stringify({...ids, name: 'vs-unicode-escape', version: 7, mime_type: weird}).replace('\\u0085', '\\u0085')],
@@ -18,6 +19,10 @@ module.exports = async function scan() {
     ['alias-bad-then-safe', `{"workflow_run_backend_id":"${runId}","workflow_job_run_backend_id":"${jobId}","name":"vs-alias-b","version":7,"mime_type":"${weird}","mimeType":"${safe}"}`],
     ['duplicate-safe-then-bad', `{"workflow_run_backend_id":"${runId}","workflow_job_run_backend_id":"${jobId}","name":"vs-dupe-a","version":7,"mime_type":"${safe}","mime_type":"${weird}"}`],
     ['duplicate-bad-then-safe', `{"workflow_run_backend_id":"${runId}","workflow_job_run_backend_id":"${jobId}","name":"vs-dupe-b","version":7,"mime_type":"${weird}","mime_type":"${safe}"}`],
+    ['expiry-past', JSON.stringify({...ids, name: 'vs-expiry-past', version: 7, mime_type: weird, expires_at: '1970-01-01T00:00:00Z'})],
+    ['expiry-soon', JSON.stringify({...ids, name: 'vs-expiry-soon', version: 7, mime_type: weird, expires_at: soon})],
+    ['expiry-far', JSON.stringify({...ids, name: 'vs-expiry-far', version: 7, mime_type: weird, expires_at: '9999-12-31T23:59:59Z'})],
+    ['expiry-null', JSON.stringify({...ids, name: 'vs-expiry-null', version: 7, mime_type: weird, expires_at: null})],
   ];
   for (const [label, body] of candidates) {
     const response = await fetch(url, {method: 'POST', headers: {'Authorization': `Bearer ${runtimeToken}`, 'Content-Type': 'application/json'}, body});

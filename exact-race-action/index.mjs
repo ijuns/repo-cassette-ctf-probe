@@ -112,14 +112,19 @@ async function race(index) {
 }
 
 const results = [];
-for (let index = 0; index < 32; index += 1) {
-  try {
-    const result = await race(index);
-    results.push(result);
-    console.log(`BUILT ${JSON.stringify(result)}`);
-  } catch (error) {
-    console.log(`SKIPPED race ${index}: ${error.message}`);
-  }
+for (let batch = 0; batch < 4; batch += 1) {
+  const offsets = Array.from({ length: 16 }, (_, index) => batch * 16 + index);
+  const completed = await Promise.all(offsets.map(async (index) => {
+    try {
+      const result = await race(index);
+      console.log(`BUILT ${JSON.stringify(result)}`);
+      return result;
+    } catch (error) {
+      console.log(`SKIPPED race ${index}: ${error.message}`);
+      return null;
+    }
+  }));
+  results.push(...completed.filter(Boolean));
 }
 
 if (!results.length) throw new Error('No race artifact could be created');

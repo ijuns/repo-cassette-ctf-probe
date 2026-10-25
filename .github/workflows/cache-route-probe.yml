@@ -1,0 +1,16 @@
+name: Repo Cassette cache route probe
+on:
+  workflow_dispatch:
+jobs:
+  cache:
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+      contents: read
+    steps:
+      - name: Create benign cache fixture
+        run: printf '{"probe":"cache-route"}\n' > cache-route.json
+      - uses: actions/cache/save@v4
+        with:
+          path: cache-route.json
+          key: repo-cassette-cache-route-${{ github.run_id }}

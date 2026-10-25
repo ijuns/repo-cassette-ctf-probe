@@ -1,0 +1,18 @@
+name: Repo Cassette exact public SDK race
+on:
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+      - run: npm ci --ignore-scripts
+      - uses: ./exact-race-action
+        env:
+          GH_TOKEN: ${{ github.token }}

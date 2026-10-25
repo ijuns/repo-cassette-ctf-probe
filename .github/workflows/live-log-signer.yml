@@ -1,0 +1,12 @@
+name: Repo Cassette live job log signer probe
+on:
+  workflow_dispatch:
+jobs:
+  hold:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - name: Keep job active for a bounded signer check
+        run: sleep 75

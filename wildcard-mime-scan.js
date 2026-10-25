@@ -13,6 +13,9 @@ module.exports = async function scan({context}) {
     ['custom', 'application/x-repo-cassette'],
     ['json-param', 'application/json; charset=utf-8'],
     ['json-upper', 'Application/JSON'],
+    ['json-nul', 'application/json\u0000'],
+    ['json-nul-nel', 'application/json\u0000\u0085'],
+    ['nul-json', '\u0000application/json'],
     ['json-control', 'application/json'],
   ];
   async function twirp(method, payload) {

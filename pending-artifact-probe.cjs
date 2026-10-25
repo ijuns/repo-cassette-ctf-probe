@@ -7,7 +7,6 @@ module.exports = async function pendingArtifactProbe({context}) {
   const ids = {workflow_run_backend_id: workflowRunBackendId, workflow_job_run_backend_id: workflowJobRunBackendId};
   const name = `pending-probe-${context.runId}`;
   const service = `${resultsOrigin}/twirp/github.actions.results.api.v1.ArtifactService/`;
-  const pause = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
   const body = Buffer.from('{"probe":"pending-artifact","owner":{"avatar_url":"https://example.com/"}}');
 
   async function twirp(method, payload) {
@@ -19,12 +18,12 @@ module.exports = async function pendingArtifactProbe({context}) {
     const data = await response.json().catch(() => ({}));
     return {status: response.status, data};
   }
-  async function list(phase) {
-    const result = await twirp('ListArtifacts', ids);
+  async function list(phase, filterByName = false) {
+    const result = await twirp('ListArtifacts', filterByName ? {...ids, name_filter: name} : ids);
     const artifacts = result.data.artifacts || [];
     const matches = artifacts.filter(item => item.name === name);
     const numericIds = matches.map(item => String(item.database_id || item.databaseId || '')).filter(Boolean);
-    console.log('LIST', JSON.stringify({phase, status: result.status, total: artifacts.length, ids: numericIds}));
+    console.log('LIST', JSON.stringify({phase, filterByName, status: result.status, total: artifacts.length, ids: numericIds}));
     return numericIds;
   }
   async function rest(phase, artifactId) {
@@ -58,28 +57,18 @@ module.exports = async function pendingArtifactProbe({context}) {
 
   const preIds = await list('before-finalize');
   for (const artifactId of preIds) await rest('before-finalize', artifactId);
+  const filteredPreIds = await list('before-finalize-filtered', true);
+  for (const artifactId of filteredPreIds) if (!preIds.includes(artifactId)) await rest('before-finalize-filtered', artifactId);
 
   const signed = await twirp('GetSignedArtifactURL', {...ids, name});
   const signedUrl = signed.data.signed_url || signed.data.signedUrl;
   console.log('SIGNED', JSON.stringify({status: signed.status, rsct: signedUrl ? new URL(signedUrl).searchParams.get('rsct') : null}));
 
-  let finalizeDone = false;
-  const finalPromise = twirp('FinalizeArtifact', {...ids, name, size: String(body.length)})
-    .then(result => {finalizeDone = true; return result;});
-  const seen = new Set(preIds);
-  for (let attempt = 0; attempt < 12 && !finalizeDone; attempt++) {
-    await pause(100);
-    const idsFound = await list(`finalizing-${attempt}`);
-    for (const artifactId of idsFound) {
-      if (seen.has(artifactId)) continue;
-      seen.add(artifactId);
-      await rest(`finalizing-${attempt}`, artifactId);
-    }
-  }
-  const finalized = await finalPromise;
+  const finalized = await twirp('FinalizeArtifact', {...ids, name, size: String(body.length)});
   const finalId = String(finalized.data.artifact_id || finalized.data.artifactId || '');
   console.log('FINALIZE', JSON.stringify({status: finalized.status, ok: Boolean(finalized.data.ok), id: finalId}));
   const postIds = await list('after-finalize');
+  await list('after-finalize-filtered', true);
   if (finalId) await rest('after-finalize', finalId);
   for (const artifactId of postIds) if (artifactId !== finalId) await rest('after-finalize-other', artifactId);
 };
